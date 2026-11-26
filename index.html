@@ -1,0 +1,324 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>동행 이용료 계산기</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap">
+<style>
+  /* Layout: 한 칸짜리 현장용 도구. 위에서 아래로 입력, 결과, 비교, 기준 순서. */
+  :root {
+    --bg: #f2f6f7;
+    --surface: #ffffff;
+    --fg: #14272b;
+    --muted: #55696e;
+    --line: #d3dfe1;
+    --accent: #0b6e74;
+    --accent-fg: #ffffff;
+    --accent-soft: #dcefef;
+    --warn: #9a5800;
+    --warn-soft: #fbefd9;
+    --font-body: "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0f1b1e;
+      --surface: #16272b;
+      --fg: #e6f0f1;
+      --muted: #96abaf;
+      --line: #2a3f44;
+      --accent: #4fc3c8;
+      --accent-fg: #06282b;
+      --accent-soft: #1b3b3e;
+      --warn: #f0b95c;
+      --warn-soft: #3a2d14;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0f1b1e;
+    --surface: #16272b;
+    --fg: #e6f0f1;
+    --muted: #96abaf;
+    --line: #2a3f44;
+    --accent: #4fc3c8;
+    --accent-fg: #06282b;
+    --accent-soft: #1b3b3e;
+    --warn: #f0b95c;
+    --warn-soft: #3a2d14;
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--fg);
+    font-family: var(--font-body);
+    font-size: 16px;
+    line-height: 1.5;
+    padding-block: 20px 40px;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+  }
+  .wrap { max-width: 480px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+  h1 { font-size: 1.5rem; line-height: 1.3; margin: 0; text-wrap: balance; letter-spacing: -0.01em; }
+  .sub { margin: 4px 0 0; color: var(--muted); font-size: 0.9375rem; }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    min-width: 0;
+  }
+  fieldset { border: 0; margin: 0; padding: 0; min-width: 0; }
+  legend, .label { font-size: 0.8125rem; font-weight: 500; color: var(--muted); letter-spacing: 0.02em; padding: 0; margin-bottom: 8px; }
+
+  .seg { display: grid; gap: 6px; }
+  .seg.three { grid-template-columns: repeat(3, 1fr); }
+  .seg.two { grid-template-columns: repeat(2, 1fr); }
+  .seg label { position: relative; display: block; min-width: 0; }
+  .seg input { position: absolute; opacity: 0; inset: 0; width: 100%; height: 100%; margin: 0; cursor: pointer; }
+  .seg span {
+    display: flex; align-items: center; justify-content: center; text-align: center;
+    min-height: 52px; padding: 6px 4px;
+    border: 1px solid var(--line); border-radius: 8px;
+    font-size: 0.9375rem; font-weight: 500; line-height: 1.3;
+    background: var(--bg); color: var(--fg);
+  }
+  .seg input:checked + span { background: var(--accent); border-color: var(--accent); color: var(--accent-fg); font-weight: 700; }
+  .seg input:focus-visible + span { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+  .fields { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .field { display: flex; flex-direction: column; min-width: 0; }
+  .field label { font-size: 0.8125rem; font-weight: 500; color: var(--muted); margin-bottom: 6px; }
+  .field input {
+    font: inherit; font-size: 1.375rem; font-weight: 500; font-variant-numeric: tabular-nums;
+    width: 100%; min-width: 0; height: 56px; padding: 0 12px;
+    border: 1px solid var(--line); border-radius: 8px;
+    background: var(--bg); color: var(--fg);
+  }
+  .field input:focus-visible { outline: 3px solid var(--accent); outline-offset: 1px; border-color: var(--accent); }
+  .unit-row { position: relative; }
+  .unit-row input { padding-right: 40px; }
+  .unit-row .unit { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); color: var(--muted); font-size: 0.9375rem; pointer-events: none; }
+
+  .result {
+    background: var(--accent-soft);
+    border: 1px solid var(--accent);
+    border-radius: 12px;
+    padding: 20px 16px;
+    display: flex; flex-direction: column; gap: 12px;
+  }
+  .result .who { font-size: 0.875rem; color: var(--muted); }
+  .amount { font-size: 2.875rem; line-height: 1.1; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+  .amount small { font-size: 1.25rem; font-weight: 500; margin-left: 2px; }
+  .duration { font-size: 1.0625rem; font-weight: 500; }
+  dl.breakdown { margin: 0; display: grid; grid-template-columns: 1fr auto; gap: 6px 12px; border-top: 1px solid var(--line); padding-top: 12px; font-size: 0.9375rem; }
+  dl.breakdown dt { color: var(--muted); min-width: 0; }
+  dl.breakdown dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; font-weight: 500; }
+  .note { font-size: 0.875rem; color: var(--muted); margin: 0; }
+  .error { background: var(--warn-soft); color: var(--warn); border: 1px solid var(--warn); border-radius: 12px; padding: 16px; font-weight: 500; }
+
+  .compare h2, .rules h2 { font-size: 0.8125rem; font-weight: 500; color: var(--muted); letter-spacing: 0.02em; margin: 0; }
+  table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+  th, td { padding: 10px 0; text-align: left; border-bottom: 1px solid var(--line); font-size: 0.9375rem; }
+  td:last-child, th:last-child { text-align: right; }
+  tr:last-child td { border-bottom: 0; }
+  tr.current td { font-weight: 700; color: var(--accent); }
+  th { font-weight: 500; color: var(--muted); font-size: 0.8125rem; }
+
+  .rules ul { margin: 8px 0 0; padding-left: 1.1em; color: var(--muted); font-size: 0.875rem; display: flex; flex-direction: column; gap: 4px; }
+  .rules strong { color: var(--fg); }
+
+  button.reset {
+    font: inherit; font-weight: 500; min-height: 48px; padding: 0 16px;
+    border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--fg); cursor: pointer;
+  }
+  button.reset:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+  [hidden] { display: none !important; }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+</style>
+
+<main class="wrap">
+  <header>
+    <h1>동행 이용료 계산기</h1>
+    <p class="sub">만난 시간부터 헤어진 시간까지 넣으면 이용료를 바로 계산합니다.</p>
+  </header>
+
+  <section class="card" aria-label="입력">
+    <fieldset>
+      <legend>이용자 계층</legend>
+      <div class="seg three" id="tierGroup">
+        <label><input type="radio" name="tier" id="tier-basic" value="basic"><span>기초생활<br>수급자</span></label>
+        <label><input type="radio" name="tier" id="tier-near" value="near"><span>차상위<br>계층</span></label>
+        <label><input type="radio" name="tier" id="tier-general" value="general" checked><span>일반</span></label>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>입력 방법</legend>
+      <div class="seg two">
+        <label><input type="radio" name="mode" id="mode-clock" value="clock" checked><span>만난·헤어진 시각</span></label>
+        <label><input type="radio" name="mode" id="mode-duration" value="duration"><span>이용시간 직접 입력</span></label>
+      </div>
+    </fieldset>
+
+    <div class="fields" id="panelClock">
+      <div class="field">
+        <label for="startTime">만난 시각</label>
+        <input type="time" id="startTime" value="10:00">
+      </div>
+      <div class="field">
+        <label for="endTime">헤어진 시각</label>
+        <input type="time" id="endTime" value="11:20">
+      </div>
+    </div>
+
+    <div class="fields" id="panelDuration" hidden>
+      <div class="field">
+        <label for="durHours">시간</label>
+        <div class="unit-row"><input type="number" inputmode="numeric" id="durHours" min="0" max="24" step="1" value="1"><span class="unit">시간</span></div>
+      </div>
+      <div class="field">
+        <label for="durMinutes">분</label>
+        <div class="unit-row"><input type="number" inputmode="numeric" id="durMinutes" min="0" max="59" step="1" value="20"><span class="unit">분</span></div>
+      </div>
+    </div>
+
+    <button type="button" class="reset" id="resetBtn">입력 지우기</button>
+  </section>
+
+  <section class="result" id="result" aria-live="polite" aria-label="계산 결과">
+    <div class="who" id="resultWho"></div>
+    <div class="amount" id="resultAmount"></div>
+    <div class="duration" id="resultDuration"></div>
+    <dl class="breakdown">
+      <dt>기본 (1시간)</dt><dd id="bdBase"></dd>
+      <dt id="bdExtraLabel">추가</dt><dd id="bdExtra"></dd>
+    </dl>
+    <p class="note" id="resultNote"></p>
+  </section>
+  <div class="error" id="errorBox" role="alert" hidden></div>
+
+  <section class="card compare" aria-label="계층별 비교">
+    <h2>같은 시간, 계층별 이용료</h2>
+    <table>
+      <thead><tr><th scope="col">계층</th><th scope="col">이용료</th></tr></thead>
+      <tbody id="compareBody"></tbody>
+    </table>
+  </section>
+
+  <section class="card rules" aria-label="산정 기준">
+    <h2>산정 기준</h2>
+    <ul>
+      <li><strong>일반</strong> 기본 1시간 5,000원, 추가 30분당 1,500원</li>
+      <li><strong>기초생활수급자·차상위계층</strong> 기본 1시간 1,000원, 추가 30분당 500원</li>
+      <li>동행매니저와 이용자가 만나는 시각부터 헤어지는 시각까지 부과합니다.</li>
+      <li>추가시간이 15분 이상일 때만 추가 비용을 부과합니다. 30분 단위로 나누고 남는 시간이 15분 이상이면 한 번 더 부과합니다.</li>
+      <li>예: 1시간 5분은 기본요금만, 1시간 20분은 기본 + 추가 1회입니다.</li>
+    </ul>
+  </section>
+</main>
+
+<script>
+  var TIERS = {
+    basic:   { name: '기초생활수급자', base: 1000, step: 500 },
+    near:    { name: '차상위계층',     base: 1000, step: 500 },
+    general: { name: '일반',           base: 5000, step: 1500 }
+  };
+
+  // 이용시간(분)과 계층으로 이용료를 계산한다.
+  function calcFee(minutes, tierKey) {
+    var t = TIERS[tierKey];
+    var extraMin = Math.max(0, minutes - 60);
+    var units = Math.floor(extraMin / 30) + ((extraMin % 30) >= 15 ? 1 : 0);
+    return { base: t.base, units: units, step: t.step, extraMin: extraMin, total: t.base + units * t.step };
+  }
+
+  function won(n) { return n.toLocaleString('ko-KR') + '원'; }
+  function fmtDur(m) {
+    var h = Math.floor(m / 60), r = m % 60;
+    if (h === 0) return r + '분';
+    return r === 0 ? h + '시간' : h + '시간 ' + r + '분';
+  }
+  function toMin(v) {
+    if (!v) return null;
+    var p = v.split(':');
+    return parseInt(p[0], 10) * 60 + parseInt(p[1], 10);
+  }
+  function $(id) { return document.getElementById(id); }
+  function val(name) { return document.querySelector('input[name="' + name + '"]:checked').value; }
+
+  function getMinutes() {
+    if (val('mode') === 'clock') {
+      var s = toMin($('startTime').value), e = toMin($('endTime').value);
+      if (s === null || e === null) return { err: '만난 시각과 헤어진 시각을 모두 입력해 주세요.' };
+      if (e < s) return { err: '헤어진 시각이 만난 시각보다 빠릅니다. 시각을 다시 확인해 주세요.' };
+      return { min: e - s };
+    }
+    var h = parseInt($('durHours').value, 10), m = parseInt($('durMinutes').value, 10);
+    h = isNaN(h) ? 0 : h; m = isNaN(m) ? 0 : m;
+    if (h < 0 || m < 0 || m > 59) return { err: '분은 0부터 59 사이로 입력해 주세요.' };
+    return { min: h * 60 + m };
+  }
+
+  function render() {
+    var isClock = val('mode') === 'clock';
+    $('panelClock').hidden = !isClock;
+    $('panelDuration').hidden = isClock;
+
+    var r = getMinutes();
+    var box = $('errorBox'), res = $('result');
+    if (r.err) {
+      box.textContent = r.err; box.hidden = false; res.hidden = true;
+      $('compareBody').innerHTML = '';
+      return;
+    }
+    box.hidden = true;
+    var minutes = r.min;
+    if (minutes <= 0) {
+      box.textContent = '이용시간이 0분입니다. 시간을 입력해 주세요.'; box.hidden = false; res.hidden = true;
+      $('compareBody').innerHTML = '';
+      return;
+    }
+    res.hidden = false;
+
+    var tier = val('tier'), f = calcFee(minutes, tier);
+    $('resultWho').textContent = TIERS[tier].name + ' 이용료';
+    $('resultAmount').innerHTML = f.total.toLocaleString('ko-KR') + '<small>원</small>';
+    $('resultDuration').textContent = '이용시간 ' + fmtDur(minutes);
+    $('bdBase').textContent = won(f.base);
+    $('bdExtraLabel').textContent = f.units > 0 ? '추가 ' + f.units + '회 × ' + won(f.step) : '추가';
+    $('bdExtra').textContent = won(f.units * f.step);
+
+    var note;
+    if (minutes <= 60) note = '1시간 이하라 기본요금만 부과됩니다.';
+    else if (f.units === 0) note = '추가시간 ' + f.extraMin + '분은 15분 미만이라 추가 비용이 없습니다.';
+    else {
+      var rest = f.extraMin % 30;
+      note = '추가시간 ' + f.extraMin + '분 기준으로 30분 단위 ' + Math.floor(f.extraMin / 30) + '회' +
+             (rest >= 15 ? ', 남은 ' + rest + '분이 15분 이상이라 1회 더 부과됩니다.' : (rest > 0 ? ', 남은 ' + rest + '분은 15분 미만이라 제외됩니다.' : '입니다.'));
+    }
+    $('resultNote').textContent = note;
+
+    var rows = '';
+    ['basic', 'near', 'general'].forEach(function (k) {
+      var c = calcFee(minutes, k);
+      rows += '<tr' + (k === tier ? ' class="current"' : '') + '><td>' + TIERS[k].name + '</td><td>' + won(c.total) + '</td></tr>';
+    });
+    $('compareBody').innerHTML = rows;
+  }
+
+  document.addEventListener('input', render);
+  document.addEventListener('change', render);
+  $('resetBtn').addEventListener('click', function () {
+    $('startTime').value = ''; $('endTime').value = '';
+    $('durHours').value = ''; $('durMinutes').value = '';
+    render();
+  });
+  render();
+</script>
+
+</body></html>
